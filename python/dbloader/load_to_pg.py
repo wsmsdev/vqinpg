@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import logging
 import time
 from datetime import datetime
-import argparse
+
 
 def setup_logging():
     logging.basicConfig(
