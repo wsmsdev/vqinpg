@@ -2,16 +2,11 @@ from sentence_transformers import SentenceTransformer
 from datasets import load_dataset
 import pandas as pd
 import numpy as np
-import logging
+import sys
+import os
 
-
-def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    return logging.getLogger(__name__)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from python.utils.script import setup_logging
 
 
 def load_dataset_corpus(logger):
