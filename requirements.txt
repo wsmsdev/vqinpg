@@ -1,2 +1,4 @@
 datasets
 sentence-transformers
+psycopg2-binary
+python-dotenv
