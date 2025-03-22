@@ -77,15 +77,11 @@ def main():
     model = load_model(dimensions, logger)
     
     embeddings = compute_embeddings(model, texts, dimensions, logger)
-    
     save_embeddings(embeddings, ids, texts, dimensions, logger, "fp32")
-    
     quantized_embeddings = quantize_embeddings_int8(embeddings, logger)
     save_embeddings(quantized_embeddings, ids, texts, dimensions, logger, "int8")
-    
     quantized_embeddings = quantize_embeddings_binary(embeddings, logger)
     save_embeddings(quantized_embeddings, ids, texts, dimensions, logger, "binary")
-    
     logger.info("Processing complete")
 
 if __name__ == "__main__":
