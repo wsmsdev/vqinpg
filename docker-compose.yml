@@ -1,0 +1,20 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: pgvector-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pgvector
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./pg/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "pgvector"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  pgdata:
