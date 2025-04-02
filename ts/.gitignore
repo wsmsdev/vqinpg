@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+
+drizzle/
+
+./node_modules

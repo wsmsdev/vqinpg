@@ -1,53 +1,11 @@
-import { sql } from "drizzle-orm";
-import { pgTable, serial, text, vector, index } from "drizzle-orm/pg-core";
+import { sql, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { int8Embedding } from "./db/schema";
 
-const fp32Embedding = pgTable(
-  "fp32_embeddings",
-  {
-    id: serial("id").primaryKey(),
-    content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 1024 }).notNull(),
-  },
-  (table) => [
-    index("l2_index").using("hnsw", table.embedding.op("vector_l2_ops")),
-    // index('ip_index').using('hnsw', table.embedding.op('vector_ip_ops'))
-    // index('cosine_index').using('hnsw', table.embedding.op('vector_cosine_ops'))
-  ]
-);
-
-const int8Embedding = pgTable(
-  "int8_embeddings",
-  {
-    id: serial("id").primaryKey(),
-    content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 1024 }).notNull(),
-  },
-  (table) => [
-    index("l2_index").using("hnsw", table.embedding.op("vector_l2_ops")),
-    // index('ip_index').using('hnsw', table.embedding.op('vector_ip_ops'))
-    // index('cosine_index').using('hnsw', table.embedding.op('vector_cosine_ops'))
-  ]
-);
-
-const binaryEmbedding = pgTable(
-  "binary_embeddings",
-  {
-    id: serial("id").primaryKey(),
-    content: text("content").notNull(),
-    embedding: vector("embedding", { dimensions: 1024 }).notNull(),
-  },
-  (table) => [
-    index("hamming_index").using("hnsw", table.embedding.op("bit_hamming_ops")),
-    //index("l1_index").using("hnsw", table.embedding.op("vector_l1_ops")),
-    // index('bit_jaccard_index').using('hnsw', table.embedding.op('bit_jaccard_ops'))
-  ]
-);
-
-export function createSyntheticVectors(
-  num_vectors: number,
-  dimensions: number
+function createSyntheticVectors(
+  num_vectors: number = 3,
+  dimensions: number = 1024
 ): Float32Array[] {
   const vectors: Float32Array[] = [];
   for (let i = 0; i < num_vectors; i++) {
@@ -60,23 +18,7 @@ export function createSyntheticVectors(
   return vectors;
 }
 
-export async function insertVectors(vectors: Float32Array[]) {
-  const pool = new Pool({
-    connectionString: "postgresql://postgres:postgres@localhost:5432/postgres",
-  });
-  const db = drizzle(pool);
-
-  const quantizedInt8 = int8Quantization(vectors);
-  await db.insert(int8Embedding).values(
-    quantizedInt8.map((vector, i) => ({
-      content: `Example ${i}`,
-      embedding: sql`[${Array.from(vector).join(",")}]::vector`,
-    }))
-  );
-  await pool.end();
-}
-
-export function int8Quantization(vectors: Float32Array[]): Int8Array[] {
+function int8Quantization(vectors: Float32Array[]): Int8Array[] {
   const [minVal, maxVal] = vectors.reduce(
     ([min, max], vector) => [
       Math.min(min, ...vector),
@@ -94,8 +36,28 @@ export function int8Quantization(vectors: Float32Array[]): Int8Array[] {
   });
 }
 
-export function simpleBinaryQuantization(vectors: Float32Array[]): number[][] {
-  return vectors.map((vector) =>
-    Array.from(vector).map((val) => (val > 0 ? 1 : 0))
-  );
+async function main() {
+  const pool = new Pool({
+    connectionString: "postgresql://postgres:postgres@localhost:5432/pgvector",
+  });
+  const db = drizzle(pool);
+
+  const vectors = createSyntheticVectors(1, 1024);
+  const quantizedVectors = int8Quantization(vectors);
+
+  await db.insert(int8Embedding).values({
+    embedding: sql`ARRAY[${sql.raw(Array.from(quantizedVectors[0]).join(","))}]::vector`,
+  });
+
+  const result = await db
+    .select()
+    .from(int8Embedding)
+    .where(eq(int8Embedding.id, 1))
+    .limit(1);
+
+  console.log(result);
+
+  await pool.end();
 }
+
+main().catch(console.error);
